@@ -4,9 +4,7 @@ import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
-import com.example.mvvmtodo.data.PreferencesManager
-import com.example.mvvmtodo.data.SortOrder
-import com.example.mvvmtodo.data.TaskDao
+import com.example.mvvmtodo.data.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -22,12 +20,15 @@ class TasksViewModel @ViewModelInject constructor(
     val preferencesFlow = preferencesManager.preferencesFlow
 
     private val taskFlow =
-        combine(searchQuery, preferencesFlow)
-        { query, filterPrefs ->
-            Pair(query, filterPrefs)
+        combine(
+            searchQuery,
+            preferencesFlow
+        ) { query: String, filterPreferences: FilterPreferences ->
+            Pair(query, filterPreferences)
         }.flatMapLatest { (query, filterPrefs) ->
             taskDao.getTasks(query, filterPrefs.sortOrder, filterPrefs.hideCompleted)
         }
+    val tasks = taskFlow.asLiveData()
 
     fun onSortOrderSelected(sortOrder: SortOrder) = viewModelScope.launch {
         preferencesManager.updateSortOrder(sortOrder)
@@ -37,6 +38,12 @@ class TasksViewModel @ViewModelInject constructor(
         preferencesManager.updateHideCompleted(hideCompleted)
     }
 
-    val tasks = taskFlow.asLiveData()
+    fun onTaskCreated(task: Task) {
+
+    }
+
+    fun onTaskCheckedChanged(task: Task, checked: Boolean) = viewModelScope.launch {
+        taskDao.update(task.copy(completed = checked))
+    }
 }
 
